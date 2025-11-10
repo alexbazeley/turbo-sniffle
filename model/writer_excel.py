@@ -140,20 +140,228 @@ class ExcelWriter:
         ws.column_dimensions['B'].width = 20
 
     def _create_inputs_data_tab(self, wb: Workbook):
-        """Create Inputs_Data tab with all input parameters."""
+        """Create Inputs_Data tab with all input parameters in table format."""
         ws = wb.create_sheet("Inputs_Data")
 
-        ws['A1'] = "Complete Input Parameters"
+        ws['A1'] = "Input Parameters - Editable Configuration"
         ws['A1'].font = Font(size=14, bold=True)
 
-        # Write JSON as formatted text
-        json_str = json.dumps(self.inputs, indent=2)
-        lines = json_str.split('\n')
+        # Table headers
+        ws['A3'] = "Section"
+        ws['B3'] = "Parameter"
+        ws['C3'] = "Value"
+        ws['D3'] = "Unit / Notes"
 
-        for i, line in enumerate(lines, start=3):
-            ws[f'A{i}'] = line
+        for col in ['A3', 'B3', 'C3', 'D3']:
+            self._apply_header_style(ws[col])
 
-        ws.column_dimensions['A'].width = 80
+        row = 4
+
+        # Helper function to add rows
+        def add_section(section_name):
+            nonlocal row
+            ws[f'A{row}'] = section_name
+            ws.merge_cells(f'A{row}:D{row}')
+            self._apply_section_style(ws[f'A{row}'])
+            row += 1
+
+        def add_param(section, param, value, unit=""):
+            nonlocal row
+            ws[f'A{row}'] = section
+            ws[f'B{row}'] = param
+            ws[f'C{row}'] = value
+            ws[f'D{row}'] = unit
+            row += 1
+
+        # PROJECT
+        add_section("PROJECT")
+        proj = self.inputs['project']
+        add_param("Project", "Name", proj.get('name', 'N/A'), "")
+        add_param("Project", "Mode", proj['mode'], "community_solar or ppa")
+        add_param("Project", "COD Date", proj['cod_date'], "YYYY-MM-DD")
+        add_param("Project", "Model Years", proj['model_years'], "years")
+        add_param("Project", "Construction Months", proj['construction_months'], "months")
+        add_param("Project", "Discount Rate", proj['discount_rate_nominal_pct'], "% nominal")
+        add_param("Project", "Inflation Rate", proj['inflation_pct'], "% per year")
+        row += 1
+
+        # SIZING
+        add_section("SIZING")
+        sizing = self.inputs['sizing']
+        add_param("Sizing", "DC Capacity", sizing['dc_kw'], "kW")
+        add_param("Sizing", "AC Capacity", sizing['ac_kw'], "kW")
+        add_param("Sizing", "DC/AC Ratio", sizing['dc_ac_ratio'], "ratio")
+        add_param("Sizing", "Capacity Factor", sizing.get('capacity_factor_pct', 0), "%")
+        add_param("Sizing", "Performance Ratio", sizing['performance_ratio_pct'], "%")
+        add_param("Sizing", "Degradation Rate", sizing['degradation_pct_per_year'], "% per year")
+        add_param("Sizing", "Availability", sizing['availability_pct'], "%")
+        add_param("Sizing", "Curtailment", sizing['curtailment_pct'], "%")
+        add_param("Sizing", "Use 8760 Data", sizing['use_8760'], "true/false")
+        row += 1
+
+        # REVENUE COMMON
+        add_section("REVENUE - COMMON")
+        rev_common = self.inputs.get('revenue_common', {})
+        add_param("Revenue", "REC Price", rev_common.get('rec_price_usd_per_mwh', 0), "$/MWh")
+        add_param("Revenue", "REC Escalator", rev_common.get('rec_escalator_pct', 0), "% per year")
+        add_param("Revenue", "Capacity Revenue", rev_common.get('capacity_revenue_usd_per_kw_year', 0), "$/kW-year")
+        add_param("Revenue", "Capacity Term", rev_common.get('capacity_term_years', 0), "years")
+        row += 1
+
+        # COMMUNITY SOLAR
+        if self.inputs['project']['mode'] == 'community_solar':
+            add_section("COMMUNITY SOLAR")
+            cdg = self.inputs.get('community_solar', {})
+            add_param("CDG", "Subscriber Discount", cdg.get('subscriber_discount_pct', 0), "%")
+            add_param("CDG", "Anchor Share", cdg.get('anchor_share_pct', 0), "%")
+            add_param("CDG", "LMI Share", cdg.get('lmi_share_pct', 0), "%")
+            add_param("CDG", "Utility Credit Value", cdg.get('utility_credit_value_usd_per_mwh', 0), "$/MWh")
+            add_param("CDG", "Management Fee", cdg.get('mgmt_fee_usd_per_acct_month', 0), "$/account/month")
+            add_param("CDG", "Acquisition Cost", cdg.get('acquisition_cost_usd_per_subscriber', 0), "$/subscriber")
+            add_param("CDG", "Annual Churn", cdg.get('annual_churn_pct', 0), "%")
+            add_param("CDG", "Bad Debt", cdg.get('bad_debt_pct_of_billings', 0), "% of billings")
+            add_param("CDG", "Ramp to Full Subscribed", cdg.get('ramp_to_full_subscribed_months', 0), "months")
+            row += 1
+
+        # PPA
+        if self.inputs['project']['mode'] == 'ppa':
+            add_section("POWER PURCHASE AGREEMENT")
+            ppa = self.inputs.get('ppa', {})
+            add_param("PPA", "PPA Price", ppa.get('ppa_price_usd_per_mwh', 0), "$/MWh")
+            add_param("PPA", "Escalator", ppa.get('ppa_escalator_pct', 0), "% per year")
+            add_param("PPA", "Contract Term", ppa.get('ppa_term_years', 0), "years")
+            add_param("PPA", "Settlement", ppa.get('settlement', ''), "pay_as_produced")
+            row += 1
+
+        # TAX CREDITS
+        add_section("TAX CREDITS")
+        tax_cr = self.inputs['tax_credits']
+        add_param("Tax", "Mode", tax_cr['mode'], "ITC, PTC, or None")
+        add_param("Tax", "ITC Percentage", tax_cr.get('itc_pct', 0), "%")
+        add_param("Tax", "Adders", tax_cr.get('adders_pct', 0), "%")
+        add_param("Tax", "Basis Reduction", tax_cr.get('basis_reduction_pct', 0), "% of ITC")
+        add_param("Tax", "PTC Rate", tax_cr.get('ptc_usd_per_mwh', 0), "$/MWh")
+        add_param("Tax", "PTC Term", tax_cr.get('ptc_term_years', 0), "years")
+        add_param("Tax", "Bonus Depreciation", tax_cr.get('bonus_depreciation_pct', 0), "%")
+        add_param("Tax", "Elective Pay", tax_cr.get('elective_pay', False), "true/false")
+        row += 1
+
+        # CAPEX
+        add_section("CAPITAL EXPENDITURE")
+        capex = self.inputs['capex']
+        add_param("CapEx", "Modules", capex.get('modules_usd', 0), "$")
+        add_param("CapEx", "Inverters", capex.get('inverters_usd', 0), "$")
+        add_param("CapEx", "Racking", capex.get('racking_usd', 0), "$")
+        add_param("CapEx", "BOS", capex.get('bos_usd', 0), "$")
+        add_param("CapEx", "Civil", capex.get('civil_usd', 0), "$")
+        add_param("CapEx", "Interconnection", capex.get('interconnection_usd', 0), "$")
+        add_param("CapEx", "Owner Costs", capex.get('owner_costs_usd', 0), "$")
+        add_param("CapEx", "Development Soft Costs", capex.get('development_soft_costs_usd', 0), "$")
+        add_param("CapEx", "EPC Indirects", capex.get('epc_indirects_usd', 0), "$")
+        add_param("CapEx", "Contingency", capex.get('contingency_pct', 0), "% of subtotal")
+        add_param("CapEx", "Decommissioning Reserve", capex.get('decommissioning_reserve_usd', 0), "$")
+        row += 1
+
+        # DEVELOPER
+        add_section("DEVELOPER FEE")
+        dev = self.inputs.get('developer', {})
+        add_param("Developer", "Fee Mode", dev.get('developer_fee_mode', ''), "percent_of_epc or fixed")
+        add_param("Developer", "Fee Percentage", dev.get('developer_fee_pct', 0), "% of EPC")
+        add_param("Developer", "Fee Fixed Amount", dev.get('developer_fee_fixed_usd', 0), "$")
+        add_param("Developer", "Fee Timing", dev.get('developer_fee_timing', ''), "NTP, COD, over_time")
+        row += 1
+
+        # OPEX
+        add_section("OPERATING EXPENDITURE")
+        opex = self.inputs.get('opex', {})
+        add_param("OpEx", "Fixed O&M", opex.get('fixed_om_usd_per_kw_year', 0), "$/kW-year")
+        add_param("OpEx", "Variable O&M", opex.get('variable_om_usd_per_mwh', 0), "$/MWh")
+        add_param("OpEx", "Insurance", opex.get('insurance_usd_per_kw_year', 0), "$/kW-year")
+        add_param("OpEx", "Asset Management", opex.get('asset_mgmt_usd_per_kw_year', 0), "$/kW-year")
+        add_param("OpEx", "Inverter Repairs", opex.get('inverter_repairs_major_usd_year', 0), "$/year")
+        add_param("OpEx", "Other OpEx", opex.get('other_opex_usd_year', 0), "$/year")
+        row += 1
+
+        # LAND
+        add_section("LAND")
+        land = self.inputs.get('land', {})
+        add_param("Land", "Mode", land.get('mode', ''), "lease or purchase")
+        add_param("Land", "Lease Base Rate", land.get('lease_base_usd_per_acre_year', 0), "$/acre-year")
+        add_param("Land", "Acres", land.get('acres', 0), "acres")
+        add_param("Land", "Lease Escalator", land.get('lease_escalator_pct', 0), "% per year")
+        add_param("Land", "Purchase Price", land.get('purchase_price_usd', 0), "$")
+        row += 1
+
+        # PROPERTY TAX
+        add_section("PROPERTY TAX / PILOT")
+        prop_tax = self.inputs.get('property_tax_pilot', {})
+        add_param("Property Tax", "PILOT Enabled", prop_tax.get('pilot_enabled', False), "true/false")
+        if prop_tax.get('pilot_enabled'):
+            add_param("Property Tax", "PILOT Schedule", "See array below", "$/year by year")
+        else:
+            no_pilot = prop_tax.get('property_tax_if_no_pilot', {})
+            add_param("Property Tax", "Assessed Value", no_pilot.get('assessed_value_usd', 0), "$")
+            add_param("Property Tax", "Mill Rate", no_pilot.get('mill_rate_pct', 0), "%")
+        row += 1
+
+        # FINANCING
+        add_section("FINANCING")
+        fin = self.inputs.get('financing', {})
+        add_param("Financing", "Use Debt", fin.get('use_debt', False), "true/false")
+        add_param("Financing", "Sizing Method", fin.get('sizing_method', ''), "target_dscr or percent_of_cost")
+        add_param("Financing", "Target Min DSCR", fin.get('target_min_dscr', 0), "ratio")
+        add_param("Financing", "Tenor", fin.get('tenor_years', 0), "years")
+        add_param("Financing", "Interest Rate", fin.get('interest_rate_pct', 0), "% per year")
+        add_param("Financing", "Amortization", fin.get('amortization', ''), "sculpted or level")
+        add_param("Financing", "Upfront Fees", fin.get('upfront_fees_pct_of_debt', 0), "% of debt")
+        add_param("Financing", "DSRA", fin.get('dsra_months', 0), "months of debt service")
+        add_param("Financing", "O&M Reserve", fin.get('om_reserve_months', 0), "months of O&M")
+        row += 1
+
+        # STATE PROGRAM
+        add_section("STATE PROGRAM")
+        prog = self.inputs.get('program', {})
+        add_param("Program", "Active", prog.get('active', 'none'), "none, ny_vder, nj_csep, il_abp")
+
+        if prog.get('active') == 'ny_vder':
+            ws[f'A{row}'] = "(See NY-Sun/VDER details in JSON or Notes tab)"
+            ws.merge_cells(f'A{row}:D{row}')
+            row += 1
+        elif prog.get('active') == 'nj_csep':
+            ws[f'A{row}'] = "(See NJ CSEP details in JSON or Notes tab)"
+            ws.merge_cells(f'A{row}:D{row}')
+            row += 1
+        elif prog.get('active') == 'il_abp':
+            ws[f'A{row}'] = "(See IL ABP details in JSON or Notes tab)"
+            ws.merge_cells(f'A{row}:D{row}')
+            row += 1
+
+        # Format columns
+        ws.column_dimensions['A'].width = 18
+        ws.column_dimensions['B'].width = 30
+        ws.column_dimensions['C'].width = 20
+        ws.column_dimensions['D'].width = 25
+
+        # Apply borders to data
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+
+        for row_num in range(3, row):
+            for col in ['A', 'B', 'C', 'D']:
+                cell = ws[f'{col}{row_num}']
+                cell.border = thin_border
+
+                # Number formatting for value column
+                if col == 'C' and row_num > 3:
+                    if isinstance(cell.value, (int, float)) and cell.value != 0:
+                        if cell.value > 1000:
+                            cell.number_format = '#,##0.00'
+                        else:
+                            cell.number_format = '0.00'
 
     def _create_energy_tab(self, wb: Workbook):
         """Create Energy_8760_or_Monthly tab."""
