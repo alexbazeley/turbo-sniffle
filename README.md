@@ -24,12 +24,36 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-### Basic Usage
+### Interactive Excel Model (Recommended)
+
+**Best for**: Finance professionals who want to edit assumptions directly in Excel
+
+```bash
+python run_formula_model.py
+```
+
+This creates `SolarModel_Interactive.xlsx` with:
+- ✅ **Editable inputs** in yellow cells on Dashboard tab
+- ✅ **Real-time updates** - Key metrics recalculate instantly
+- ✅ **Excel formulas** - All calculations visible and auditable
+- ✅ **Dropdowns** for categorical inputs (mode, etc.)
+- ✅ **No re-runs needed** - Change assumptions and see results immediately
+
+**Usage:**
+1. Open `SolarModel_Interactive.xlsx`
+2. Go to "Dashboard" tab
+3. Edit yellow input cells (COD date, capacity, prices, etc.)
+4. Green metric cells update automatically
+5. Review detailed calculations in other tabs
+
+### Python-Calculated Model
+
+**Best for**: Programmatic scenarios, batch runs, or when you need Python flexibility
 
 ```python
 from model import run_model
 
-# Run model with example inputs
+# Run model with JSON inputs
 cashflow, metrics = run_model('example_inputs.json', 'SolarModel.xlsx')
 
 print(f"Equity IRR: {metrics['pre_tax_irr']*100:.2f}%")
@@ -37,7 +61,7 @@ print(f"Project IRR: {metrics['project_irr']*100:.2f}%")
 print(f"Min DSCR: {metrics['min_dscr']:.2f}")
 ```
 
-### Command Line
+Or from command line:
 
 ```bash
 python -c "from model import run_model; run_model('example_inputs.json')"
