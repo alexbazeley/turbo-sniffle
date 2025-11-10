@@ -1,0 +1,199 @@
+{
+  "project": {
+    "name": "Example Community Solar Site",
+    "mode": "community_solar",
+    "cod_date": "2027-06-01",
+    "model_years": 35,
+    "construction_months": 12,
+    "discount_rate_nominal_pct": 8.0,
+    "inflation_pct": 2.5
+  },
+  "sizing": {
+    "dc_kw": 12000,
+    "ac_kw": 10000,
+    "dc_ac_ratio": 1.2,
+    "capacity_factor_pct": 19.5,
+    "performance_ratio_pct": 86.0,
+    "degradation_pct_per_year": 0.5,
+    "availability_pct": 98.0,
+    "curtailment_pct": 0.0,
+    "use_8760": false,
+    "8760_csv_path": null
+  },
+  "revenue_common": {
+    "rec_price_usd_per_mwh": 20.0,
+    "rec_escalator_pct": 0.0,
+    "capacity_revenue_usd_per_kw_year": 0.0,
+    "capacity_term_years": 0
+  },
+  "community_solar": {
+    "subscriber_discount_pct": 10.0,
+    "anchor_share_pct": 30.0,
+    "lmi_share_pct": 20.0,
+    "utility_credit_value_usd_per_mwh": 130.0,
+    "mgmt_fee_usd_per_acct_month": 2.5,
+    "acquisition_cost_usd_per_subscriber": 200.0,
+    "annual_churn_pct": 6.0,
+    "bad_debt_pct_of_billings": 1.5,
+    "ramp_to_full_subscribed_months": 12
+  },
+  "ppa": {
+    "ppa_price_usd_per_mwh": 65.0,
+    "ppa_escalator_pct": 2.0,
+    "ppa_term_years": 20,
+    "settlement": "pay_as_produced"
+  },
+  "tax_credits": {
+    "mode": "ITC",
+    "itc_pct": 30.0,
+    "adders_pct": 10.0,
+    "basis_reduction_pct": 50.0,
+    "ptc_usd_per_mwh": 27.5,
+    "ptc_term_years": 10,
+    "bonus_depreciation_pct": 0.0,
+    "elective_pay": false,
+    "reduce_itc_basis_for_grants": false
+  },
+  "taxes": {
+    "federal_tax_rate_pct": 21.0,
+    "state_tax_rate_pct": 6.5,
+    "depr_schedule": "MACRS_5yr",
+    "state_depr_schedule": null,
+    "nol_carryforward_years": 20
+  },
+  "capex": {
+    "modules_usd": 3800000,
+    "inverters_usd": 600000,
+    "racking_usd": 900000,
+    "bos_usd": 2100000,
+    "civil_usd": 600000,
+    "interconnection_usd": 1000000,
+    "owner_costs_usd": 250000,
+    "development_soft_costs_usd": 650000,
+    "epc_indirects_usd": 300000,
+    "contingency_pct": 5.0,
+    "idc_pct_of_debt_drawn": 100.0,
+    "decommissioning_reserve_usd": 150000
+  },
+  "developer": {
+    "developer_fee_mode": "percent_of_epc",
+    "developer_fee_pct": 5.0,
+    "developer_fee_fixed_usd": 0.0,
+    "developer_fee_timing": "COD"
+  },
+  "land": {
+    "mode": "lease",
+    "lease_base_usd_per_acre_year": 1500.0,
+    "acres": 50.0,
+    "lease_escalator_pct": 2.0,
+    "purchase_price_usd": 0.0,
+    "closing_costs_usd": 0.0
+  },
+  "property_tax_pilot": {
+    "pilot_enabled": true,
+    "pilot_schedule_usd_per_year": [
+      50000, 51000, 52020, 53060, 54121, 55204, 56308, 57434, 58583, 59755,
+      60950, 62169, 63412, 64680, 65974, 67292, 68638, 70010, 71410, 72838,
+      74296, 75782, 77298, 78844, 80421, 82029, 83669, 85342, 87049, 88789,
+      90564, 92375, 94221, 96104, 98025
+    ],
+    "property_tax_if_no_pilot": {
+      "assessed_value_usd": 6000000,
+      "mill_rate_pct": 2.0
+    }
+  },
+  "opex": {
+    "fixed_om_usd_per_kw_year": 15.0,
+    "variable_om_usd_per_mwh": 2.0,
+    "insurance_usd_per_kw_year": 4.0,
+    "asset_mgmt_usd_per_kw_year": 3.0,
+    "inverter_repairs_major_usd_year": 30000,
+    "other_opex_usd_year": 20000
+  },
+  "financing": {
+    "use_debt": true,
+    "sizing_method": "target_dscr",
+    "target_min_dscr": 1.30,
+    "tenor_years": 15,
+    "interest_rate_pct": 7.0,
+    "amortization": "sculpted",
+    "upfront_fees_pct_of_debt": 2.0,
+    "dsra_months": 6,
+    "om_reserve_months": 6
+  },
+  "exit": {
+    "buyout_years": [10, 15, 20, 25, 30, 35],
+    "terminal_value_method": "exit_multiple_on_yearN_cashflow",
+    "exit_multiple": 8.0
+  },
+  "program": {
+    "active": "none",
+    "ny_vder": {
+      "enabled": false,
+      "utility": "National Grid",
+      "nyiso_zone": "E",
+      "value_stack": {
+        "energy_usd_per_mwh": 45.0,
+        "env_usd_per_mwh": 20.0,
+        "icap_usd_per_kw_year": 25.0,
+        "drv_schedule_usd_per_kw_year": [18.0, 17.0, 16.0, 15.0, 14.0, 13.0, 12.0, 11.0, 10.0, 9.0],
+        "lsrv_tranches": [
+          {"usd_per_kw_year": 20.0, "years": 10}
+        ],
+        "loss_factor_pct": 3.0
+      },
+      "community_credit": {
+        "usd_per_kwh": 0.09,
+        "term_years": 25,
+        "escalator_pct": 0.0
+      },
+      "ny_sun": {
+        "icsa_enabled": false,
+        "icsa_usd_per_wdc": 0.35,
+        "icsa_lmi_share_pct": 20.0,
+        "upfront_other_usd_per_wdc": 0.00,
+        "grant_timing": "COD"
+      },
+      "overrides": {
+        "subscriber_discount_pct_override": null
+      }
+    },
+    "nj_csep": {
+      "enabled": false,
+      "edc": "PSE&G",
+      "customer_mix_pct": {
+        "residential": 70.0,
+        "small_commercial": 30.0
+      },
+      "bill_credit_rates_usd_per_kwh": {
+        "residential": 0.90,
+        "small_commercial": 0.70
+      },
+      "subscriber_discounts_pct": {
+        "lmi": 15.0,
+        "non_lmi": 10.0,
+        "anchor": 5.0
+      },
+      "program_adders": {
+        "lmi_usd_per_mwh": 0.0,
+        "siting_usd_per_mwh": 0.0,
+        "public_entity_usd_per_mwh": 0.0,
+        "upfront_usd_per_wdc": 0.00
+      },
+      "loss_factor_pct": 0.0,
+      "ramp_to_full_subscribed_months": 12
+    },
+    "il_abp": {
+      "enabled": false,
+      "category": "community_solar",
+      "rec_price_usd": 75.0,
+      "rec_term_years": 15,
+      "payment_schedule_pct_by_year": [10, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7],
+      "brownfield_or_site_adder_usd_per_mwh": 0.0,
+      "smart_inverter_rebate_usd_per_kwac": 0.0,
+      "admin_fees_pct": 0.0,
+      "security_withhold_pct": 0.0,
+      "rec_delivery_loss_factor_pct": 0.0
+    }
+  }
+}
