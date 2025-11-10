@@ -139,17 +139,23 @@ class FormulaExcelWriter:
         contingency = total_capex * (self.inputs['capex'].get('contingency_pct', 5) / 100)
         total_capex_with_contingency = total_capex + contingency
 
+        # Convert developer fee from % to $/W (assume typical $1.50/W total, 5% = $0.075/W)
+        dev_fee_per_watt = (total_capex_with_contingency * self.inputs['developer'].get('developer_fee_pct', 5) / 100) / (self.inputs['sizing']['dc_kw'] * 1000)
+
         row = self._add_input_section(ws, row, "CAPEX", [
             ("CapEx_Total", "Total CapEx ($)", total_capex_with_contingency, "currency"),
-            ("DevFee_Pct", "Developer Fee (%)", self.inputs['developer'].get('developer_fee_pct', 5), "percent"),
+            ("DevFee_PerWatt", "Developer Fee ($/W)", dev_fee_per_watt, "currency_per_watt"),
         ])
 
-        # OpEx
+        # OpEx - Convert land lease from $/acre-yr to $/MW-yr
+        # Typical: 50 acres for 12 MW-DC = 4.17 acres/MW, at $1500/acre = $6,250/MW-yr
+        land_lease_per_mw_yr = (self.inputs['land'].get('lease_base_usd_per_acre_year', 1500) *
+                                self.inputs['land'].get('acres', 50)) / (self.inputs['sizing']['dc_kw'] / 1000)
+
         row = self._add_input_section(ws, row, "OPEX", [
             ("FixedOM", "Fixed O&M ($/kW-yr)", self.inputs['opex'].get('fixed_om_usd_per_kw_year', 15), "currency"),
             ("Insurance", "Insurance ($/kW-yr)", self.inputs['opex'].get('insurance_usd_per_kw_year', 4), "currency"),
-            ("LandLease", "Land Lease ($/acre-yr)", self.inputs['land'].get('lease_base_usd_per_acre_year', 1500), "currency"),
-            ("LandAcres", "Land Acres", self.inputs['land'].get('acres', 50), "number"),
+            ("LandLease_PerMW", "Land Lease ($/MW-yr)", land_lease_per_mw_yr, "currency"),
         ])
 
         # Financing
@@ -207,8 +213,8 @@ class FormulaExcelWriter:
 
         # Cost Metrics
         self._add_output_section(ws, metrics_row, "F", "COST METRICS", [
-            ("Total CapEx ($)", "=CapEx_Total*(1+DevFee_Pct/100)", "$#,##0"),
-            ("$/W-DC", "=CapEx_Total/DC_kW/1000", "$0.00"),
+            ("Total CapEx ($)", "=CapEx_Total+DevFee_PerWatt*DC_kW*1000", "$#,##0"),
+            ("$/W-DC", "=(CapEx_Total+DevFee_PerWatt*DC_kW*1000)/DC_kW/1000", "$0.000"),
             ("LCOE ($/MWh)", "=Cashflow!B9", "$#,##0"),
         ])
 
@@ -254,6 +260,8 @@ class FormulaExcelWriter:
                 ws[f'C{row}'].number_format = '0.00'
             elif input_type == "currency":
                 ws[f'C{row}'].number_format = '$#,##0'
+            elif input_type == "currency_per_watt":
+                ws[f'C{row}'].number_format = '$0.000'
             elif input_type == "number":
                 ws[f'C{row}'].number_format = '0.00'
             elif input_type == "date":
@@ -420,8 +428,8 @@ class FormulaExcelWriter:
             # Insurance (monthly)
             ws[f'D{row}'] = f'=IF(B{row}=0, 0, Insurance*AC_kW/12)'
 
-            # Land lease (monthly)
-            ws[f'E{row}'] = f'=IF(B{row}=0, 0, LandLease*LandAcres/12)'
+            # Land lease (monthly) - using $/MW-yr
+            ws[f'E{row}'] = f'=IF(B{row}=0, 0, LandLease_PerMW*DC_kW/1000/12)'
 
             # Total
             ws[f'F{row}'] = f'=C{row}+D{row}+E{row}'
@@ -444,13 +452,17 @@ class FormulaExcelWriter:
         ws['B5'] = "=CapEx_Total"
         ws['B5'].number_format = '$#,##0'
 
-        ws['A6'] = "Developer Fee"
-        ws['B6'] = "=CapEx_Total*DevFee_Pct/100"
-        ws['B6'].number_format = '$#,##0'
+        ws['A6'] = "Developer Fee ($/W)"
+        ws['B6'] = "=DevFee_PerWatt"
+        ws['B6'].number_format = '$0.000'
 
-        ws['A7'] = "Total Project Cost"
-        ws['B7'] = "=B5+B6"
+        ws['A7'] = "Developer Fee ($)"
+        ws['B7'] = "=DevFee_PerWatt*DC_kW*1000"
         ws['B7'].number_format = '$#,##0'
+
+        ws['A8'] = "Total Project Cost"
+        ws['B8'] = "=B5+B7"
+        ws['B8'].number_format = '$#,##0'
 
         ws.column_dimensions['A'].width = 25
         ws.column_dimensions['B'].width = 20
