@@ -183,21 +183,25 @@ class FormulaExcelWriter:
 
         metrics_row += 5
 
-        # Energy Production
+        # Energy Production - Calculate construction months offset
+        construction_months = self.inputs['project']['construction_months']
+        year1_start_row = 14 + construction_months
+        year1_end_row = year1_start_row + 11  # 12 months
+
         self._add_output_section(ws, metrics_row, "F", "YEAR 1 PRODUCTION", [
-            ("Annual Energy (MWh)", "=SUM(Energy_Calcs!D14:D25)", "#,##0"),
+            ("Annual Energy (MWh)", f"=SUM(Energy_Calcs!D{year1_start_row}:D{year1_end_row})", "#,##0"),
             ("Capacity Factor (%)", "=CapacityFactor", "0.0%"),
-            ("$/MWh (Year 1 Revenue)", "=SUM(Revenue_Calcs!E14:E25)/SUM(Energy_Calcs!D14:D25)", "$#,##0"),
+            ("$/MWh (Year 1 Revenue)", f"=IFERROR(SUM(Revenue_Calcs!E{year1_start_row}:E{year1_end_row})/SUM(Energy_Calcs!D{year1_start_row}:D{year1_end_row}),0)", "$#,##0"),
         ])
 
         metrics_row += 5
 
         # Financial Returns
         self._add_output_section(ws, metrics_row, "F", "FINANCIAL RETURNS", [
-            ("Equity IRR (%)", "=Cashflow!B5", "0.00%"),
-            ("Project IRR (%)", "=Cashflow!B6", "0.00%"),
-            ("Equity NPV ($)", "=Cashflow!B7", "$#,##0"),
-            ("Payback (years)", "=Cashflow!B8", "0.0"),
+            ("Equity IRR (Avg %)", "=Cashflow!B5", "0.00%"),
+            ("Project IRR (Avg %)", "=Cashflow!B6", "0.00%"),
+            ("Total Revenue ($)", "=Cashflow!B7", "$#,##0"),
+            ("Total OpEx ($)", "=Cashflow!B8", "$#,##0"),
         ])
 
         metrics_row += 6
@@ -538,29 +542,71 @@ class FormulaExcelWriter:
         ws['A3'].font = self.section_font
         ws['A3'].fill = self.section_fill
 
-        # Placeholder formulas (simplified)
-        ws['A5'] = "Equity IRR"
-        ws['B5'] = "=0.12"  # Placeholder - would need XIRR with equity cashflows
+        # Calculate row ranges
+        construction_months = self.inputs['project']['construction_months']
+        model_years = self.inputs['project']['model_years']
+        total_months = construction_months + (model_years * 12)
+
+        first_row = 14
+        last_row = first_row + total_months - 1
+        first_op_row = first_row + construction_months
+
+        # Simplified financial metrics with formulas
+        ws['A5'] = "Equity IRR (Simplified)"
+        # Simplified IRR = (Total Returns / Total Investment) ^ (1/years) - 1
+        ws['B5'] = f"=(SUM(Revenue_Calcs!E{first_op_row}:E{last_row})-SUM(OpEx_Calcs!F{first_op_row}:F{last_row})-Debt_Calcs!B5*0.4)/CapEx_Calcs!B8*100/{model_years}"
         ws['B5'].number_format = '0.00%'
+        ws['C5'] = "(Annual avg return %)"
+        ws['C5'].font = Font(italic=True, size=9)
 
-        ws['A6'] = "Project IRR"
-        ws['B6'] = "=0.10"  # Placeholder
+        ws['A6'] = "Project IRR (Simplified)"
+        ws['B6'] = f"=(SUM(Revenue_Calcs!E{first_op_row}:E{last_row})-SUM(OpEx_Calcs!F{first_op_row}:F{last_row}))/CapEx_Calcs!B8*100/{model_years}"
         ws['B6'].number_format = '0.00%'
+        ws['C6'] = "(Annual avg return %)"
+        ws['C6'].font = Font(italic=True, size=9)
 
-        ws['A7'] = "Equity NPV"
-        ws['B7'] = "=1000000"  # Placeholder
+        ws['A7'] = "Total Revenue (Lifetime)"
+        ws['B7'] = f"=SUM(Revenue_Calcs!E{first_op_row}:E{last_row})"
         ws['B7'].number_format = '$#,##0'
 
-        ws['A8'] = "Payback Period (years)"
-        ws['B8'] = "=7.5"  # Placeholder
-        ws['B8'].number_format = '0.0'
+        ws['A8'] = "Total OpEx (Lifetime)"
+        ws['B8'] = f"=SUM(OpEx_Calcs!F{first_op_row}:F{last_row})"
+        ws['B8'].number_format = '$#,##0'
 
         ws['A9'] = "LCOE ($/MWh)"
-        ws['B9'] = "=95"  # Placeholder
+        # LCOE = (Total CapEx + Total OpEx) / Total Energy
+        ws['B9'] = f"=(CapEx_Calcs!B8+SUM(OpEx_Calcs!F{first_op_row}:F{last_row}))/SUM(Energy_Calcs!D{first_op_row}:D{last_row})"
         ws['B9'].number_format = '$#,##0'
 
-        ws.column_dimensions['A'].width = 25
+        ws['A11'] = "Project Summary"
+        ws['A11'].font = self.section_font
+        ws['A11'].fill = self.section_fill
+
+        ws['A12'] = "Total Energy (MWh)"
+        ws['B12'] = f"=SUM(Energy_Calcs!D{first_op_row}:D{last_row})"
+        ws['B12'].number_format = '#,##0'
+
+        ws['A13'] = "Total Project Cost"
+        ws['B13'] = "=CapEx_Calcs!B8"
+        ws['B13'].number_format = '$#,##0'
+
+        ws['A14'] = "Debt Amount"
+        ws['B14'] = "=Debt_Calcs!B5"
+        ws['B14'].number_format = '$#,##0'
+
+        ws['A15'] = "Equity Investment"
+        ws['B15'] = "=CapEx_Calcs!B8-Debt_Calcs!B5"
+        ws['B15'].number_format = '$#,##0'
+
+        # Add note about simplified metrics
+        ws['A17'] = "Note: IRR calculations are simplified annual averages. For precise XIRR,"
+        ws['A18'] = "      use the Python model or build detailed monthly cashflows with dates."
+        ws['A17'].font = Font(italic=True, size=9)
+        ws['A18'].font = Font(italic=True, size=9)
+
+        ws.column_dimensions['A'].width = 30
         ws.column_dimensions['B'].width = 20
+        ws.column_dimensions['C'].width = 25
 
     def _create_notes_tab(self, wb: Workbook):
         """Create notes and documentation tab."""
